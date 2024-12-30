@@ -22,7 +22,7 @@ A Flask-based web application that monitors website uptime and sends notificatio
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/SheepieGamer/uptime-monitor/
 cd ping
 ```
 
