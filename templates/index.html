@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ping Monitor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0a0a0f;
+            color: #e1e1e6;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            margin-bottom: 2.5rem;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1.5rem 2rem;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: #8f9ba8;
+            font-size: 0.95rem;
+        }
+
+        .input-container {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 2.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 1rem;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        input[type="text"]::placeholder {
+            color: #8f9ba8;
+        }
+
+        button {
+            background: #3b82f6;
+            color: #fff;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+        }
+
+        button:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        #targets {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+            gap: 1.5rem;
+            padding: 1.5rem;
+            align-items: start;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        .target-card {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            position: relative;
+            transform: translateZ(0);
+            height: fit-content;
+            min-width: 450px;
+        }
+
+        .target-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .target-card:hover::after {
+            opacity: 1;
+        }
+
+        .stats-details {
+            margin-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 1rem;
+            display: none;
+        }
+
+        .stats-details.show {
+            display: block;
+        }
+
+        .stats-details.animate {
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .toggle-stats {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #8f9ba8;
+            padding: 0.5rem;
+            margin-top: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+        }
+
+        .toggle-stats:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(0);
+        }
+
+        .stats-grid-detailed {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+        }
+
+        .stats-item-detailed {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 0.75rem;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .stats-label-detailed {
+            font-size: 0.8rem;
+            color: #8f9ba8;
+            margin-bottom: 0.2rem;
+        }
+
+        .stats-value-detailed {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .graph-container {
+            margin-top: 1.5rem;
+            padding: 1.25rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            height: 300px;
+        }
+
+        .graph-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .graph-title {
+            font-size: 0.9rem;
+            color: #8f9ba8;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .time-range-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            max-width: 100%;
+        }
+
+        .time-range-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #8f9ba8;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .time-range-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .time-range-btn.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: rgba(59, 130, 246, 0.3);
+            color: #3b82f6;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .target-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .target-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .hostname-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .target-hostname {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .status-up {
+            background: #22c55e;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
+        }
+
+        .status-down {
+            background: #ef4444;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+        }
+
+        .delete-btn {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+            border-radius: 6px;
+        }
+
+        .delete-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .stat-item {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: #8f9ba8;
+            margin-bottom: 0.3rem;
+        }
+
+        .stat-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+            }
+        }
+
+        .webhook-section {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .webhook-input {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .webhook-input input {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .webhook-input input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .webhook-message-input {
+            width: 100%;
+            margin: 5px 0;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            min-height: 60px;
+            resize: vertical;
+        }
+
+        .webhook-status {
+            font-size: 0.9rem;
+            color: #8f9ba8;
+            margin-top: 0.5rem;
+        }
+
+        .webhook-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .webhook-remove {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .webhook-remove:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            #targets {
+                grid-template-columns: 1fr;
+                padding: 1rem;
+            }
+
+            .target-card {
+                min-width: unset;
+            }
+
+            .stat-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Ping Monitor</h1>
+            <p>Real-time network monitoring dashboard</p>
+        </div>
+
+        <div class="input-container">
+            <div class="input-group">
+                <input type="text" id="target-input" placeholder="Enter hostname or IP address (e.g., example.com)">
+                <button onclick="addTarget()">Add Target</button>
+            </div>
+        </div>
+
+        <div id="targets" class="targets">
+            <!-- Target cards will be added here dynamically -->
+        </div>
+    </div>
+
+    <script>
+        function formatDuration(ms) {
+            if (!ms) return 'N/A';
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+
+            if (days > 0) return `${days}d ${hours % 24}h`;
+            if (hours > 0) return `${hours}h ${minutes % 60}m`;
+            if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+            return `${seconds}s`;
+        }
+
+        function formatDateTime(dateStr) {
+            if (!dateStr) return 'Never';
+            const date = new Date(dateStr);
+            return date.toLocaleString();
+        }
+
+        function createTargetCard(hostname, stats, isNew = false) {
+            const isUp = !stats.downtime_start;
+            const chartId = `chart-${hostname.replace(/[^a-zA-Z0-9]/g, '-')}`;
+            const card = document.createElement('div');
+            card.className = `target-card ${isNew ? 'fade-in' : ''}`;
+            
+            // Check if there's an existing card and if its stats are expanded
+            const existingCard = document.querySelector(`.target-card[data-hostname="${hostname}"]`);
+            const isExpanded = existingCard?.querySelector('.stats-details.show') !== null;
+            
+            const uptimeColor = stats.uptime_percentage > 95 ? '#22c55e' : 
+                              stats.uptime_percentage > 80 ? '#eab308' : '#ef4444';
+            
+            card.setAttribute('data-hostname', hostname);
+            card.innerHTML = `
+                <div class="target-header">
+                    <div class="hostname-container">
+                        <span class="status-indicator ${isUp ? 'status-up pulse' : 'status-down'}"></span>
+                        <h3 class="target-hostname">${hostname}</h3>
+                    </div>
+                    <button class="delete-btn" onclick="deleteTarget('${hostname}')">Remove</button>
+                </div>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">Uptime</div>
+                        <div class="stat-value" style="color: ${uptimeColor}">${stats.uptime_percentage.toFixed(1)}%</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Current Latency</div>
+                        <div class="stat-value">${stats.current_latency ? (stats.current_latency * 1000).toFixed(1) + 'ms' : 'N/A'}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Last Success</div>
+                        <div class="stat-value" style="font-size: 0.9rem">${formatDateTime(stats.last_success)}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Status</div>
+                        <div class="stat-value" style="color: ${isUp ? '#22c55e' : '#ef4444'}">${isUp ? 'Online' : 'Offline'}</div>
+                    </div>
+                </div>
+                <button class="toggle-stats" onclick="toggleStats(this)">${isExpanded ? 'Hide' : 'Show'} Detailed Statistics</button>
+                <div class="stats-details${isExpanded ? ' show' : ''}">
+                    <div class="stats-grid-detailed">
+                        <div class="stats-item-detailed">
+                            <div class="stats-label-detailed">Average Latency</div>
+                            <div class="stats-value-detailed">${stats.avg_latency ? (stats.avg_latency * 1000).toFixed(1) + 'ms' : 'N/A'}</div>
+                        </div>
+                        <div class="stats-item-detailed">
+                            <div class="stats-label-detailed">Lowest Latency</div>
+                            <div class="stats-value-detailed">${stats.min_latency ? (stats.min_latency * 1000).toFixed(1) + 'ms' : 'N/A'}</div>
+                        </div>
+                        <div class="stats-item-detailed">
+                            <div class="stats-label-detailed">Highest Latency</div>
+                            <div class="stats-value-detailed">${stats.max_latency ? (stats.max_latency * 1000).toFixed(1) + 'ms' : 'N/A'}</div>
+                        </div>
+                        <div class="stats-item-detailed">
+                            <div class="stats-label-detailed">Standard Deviation</div>
+                            <div class="stats-value-detailed">${stats.std_dev ? (stats.std_dev * 1000).toFixed(1) + 'ms' : 'N/A'}</div>
+                        </div>
+                    </div>
+                    <div class="graph-container">
+                        <div class="graph-header">
+                            <div class="graph-title">Latency History</div>
+                            <div class="time-range-buttons">
+                                <button class="time-range-btn ${stats.time_range === '1h' ? 'active' : ''}" 
+                                        onclick="changeTimeRange('${hostname}', '1h')">1h</button>
+                                <button class="time-range-btn ${stats.time_range === '6h' ? 'active' : ''}" 
+                                        onclick="changeTimeRange('${hostname}', '6h')">6h</button>
+                                <button class="time-range-btn ${stats.time_range === '24h' ? 'active' : ''}" 
+                                        onclick="changeTimeRange('${hostname}', '24h')">24h</button>
+                                <button class="time-range-btn ${stats.time_range === '5d' ? 'active' : ''}" 
+                                        onclick="changeTimeRange('${hostname}', '5d')">5d</button>
+                                <button class="time-range-btn ${stats.time_range === '10d' ? 'active' : ''}" 
+                                        onclick="changeTimeRange('${hostname}', '10d')">10d</button>
+                                <button class="time-range-btn ${stats.time_range === '1m' ? 'active' : ''}" 
+                                        onclick="changeTimeRange('${hostname}', '1m')">1m</button>
+                                <button class="time-range-btn ${stats.time_range === '1y' ? 'active' : ''}" 
+                                        onclick="changeTimeRange('${hostname}', '1y')">1y</button>
+                                <button class="time-range-btn ${stats.time_range === 'lifetime' ? 'active' : ''}" 
+                                        onclick="changeTimeRange('${hostname}', 'lifetime')">All</button>
+                            </div>
+                        </div>
+                        <canvas id="${chartId}"></canvas>
+                    </div>
+                    <div class="webhook-section">
+                        <h3>Notifications</h3>
+                        <div class="webhook-input">
+                            <input type="text" id="webhook-${hostname}" 
+                                   placeholder="Enter webhook URL (Discord or custom endpoint)" 
+                                   value="${unsavedWebhooks[hostname] || stats.webhook_url || ''}"
+                                   oninput="updateWebhookInput('${hostname}', this)"
+                                   class="webhook-url-input">
+                            <textarea id="webhook-message-${hostname}"
+                                    placeholder="Custom message (optional). Use {status}, {hostname}, {time}, {downtime}, {last_success} as placeholders"
+                                    oninput="updateWebhookMessage('${hostname}', this)"
+                                    class="webhook-message-input">${unsavedWebhookMessages[hostname] || stats.webhook_message || ''}</textarea>
+                            <button onclick="setWebhook('${hostname}')" class="webhook-save">Save</button>
+                            ${stats.webhook_url ? `<button onclick="removeWebhook('${hostname}')" class="webhook-remove">Remove</button>` : ''}
+                        </div>
+                        <div class="webhook-status">
+                            ${stats.webhook_url ? 'Notifications active - You will be notified when the site goes down or comes back up' : 'Add a webhook URL to receive notifications when the site status changes'}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // After the card is created, initialize or update the chart
+            setTimeout(() => {
+                const canvas = document.getElementById(chartId);
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    const existingChart = Chart.getChart(chartId);
+                    if (existingChart) {
+                        existingChart.destroy();
+                    }
+
+                    const chartData = stats.history.map(h => ({
+                        x: new Date(h.timestamp),
+                        y: h.latency * 1000 // Convert to ms
+                    }));
+
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            datasets: [{
+                                label: 'Latency (ms)',
+                                data: chartData,
+                                borderColor: '#3b82f6',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                borderWidth: 2,
+                                tension: 0.3,
+                                fill: true,
+                                pointRadius: 2,
+                                pointHoverRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            animation: false,
+                            layout: {
+                                padding: {
+                                    top: 10,
+                                    right: 10,
+                                    bottom: 10,
+                                    left: 10
+                                }
+                            },
+                            interaction: {
+                                intersect: false,
+                                mode: 'index'
+                            },
+                            scales: {
+                                x: {
+                                    type: 'time',
+                                    time: {
+                                        unit: 'second',
+                                        displayFormats: {
+                                            second: 'HH:mm:ss'
+                                        }
+                                    },
+                                    grid: {
+                                        display: false
+                                    },
+                                    ticks: {
+                                        color: '#8f9ba8',
+                                        maxRotation: 0,
+                                        autoSkip: true,
+                                        maxTicksLimit: 6
+                                    }
+                                },
+                                y: {
+                                    beginAtZero: true,
+                                    grid: {
+                                        color: 'rgba(255, 255, 255, 0.1)'
+                                    },
+                                    ticks: {
+                                        color: '#8f9ba8',
+                                        padding: 10,
+                                        callback: function(value) {
+                                            return value + 'ms';
+                                        }
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: false
+                                },
+                                tooltip: {
+                                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                    titleColor: '#fff',
+                                    bodyColor: '#fff',
+                                    callbacks: {
+                                        label: function(context) {
+                                            return `Latency: ${context.parsed.y.toFixed(1)}ms`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            }, 0);
+
+            return card;
+        }
+
+        function toggleStats(button) {
+            const detailsSection = button.nextElementSibling;
+            const isShowing = detailsSection.classList.contains('show');
+            
+            if (!isShowing) {
+                detailsSection.classList.add('show', 'animate');
+                // Remove animation class after it completes
+                setTimeout(() => detailsSection.classList.remove('animate'), 300);
+            } else {
+                detailsSection.classList.remove('show', 'animate');
+            }
+            
+            button.textContent = isShowing ? 'Show Detailed Statistics' : 'Hide Detailed Statistics';
+        }
+
+        let currentTimeRanges = {};
+        let unsavedWebhooks = {};
+        let unsavedWebhookMessages = {};
+
+        function updateWebhookInput(hostname, input) {
+            unsavedWebhooks[hostname] = input.value;
+        }
+
+        function updateWebhookMessage(hostname, input) {
+            unsavedWebhookMessages[hostname] = input.value;
+        }
+
+        async function changeTimeRange(hostname, timeRange) {
+            currentTimeRanges[hostname] = timeRange;
+            updateTargets();
+        }
+
+        async function setWebhook(hostname) {
+            const input = document.getElementById(`webhook-${hostname}`);
+            const messageInput = document.getElementById(`webhook-message-${hostname}`);
+            const webhookUrl = input.value.trim();
+            const webhookMessage = messageInput.value.trim();
+            
+            if (!webhookUrl) {
+                alert('Please enter a webhook URL');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/targets/${hostname}/webhook`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        webhook_url: webhookUrl,
+                        webhook_message: webhookMessage
+                    })
+                });
+                
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to set webhook');
+                }
+                
+                // Clear unsaved values after successful save
+                delete unsavedWebhooks[hostname];
+                delete unsavedWebhookMessages[hostname];
+                updateTargets();
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function removeWebhook(hostname) {
+            if (!confirm('Are you sure you want to remove notifications for this target?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/targets/${hostname}/webhook`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to remove webhook');
+                }
+                
+                // Clear any unsaved webhook URL
+                delete unsavedWebhooks[hostname];
+                updateTargets();
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        function updateTargets() {
+            const queryParams = new URLSearchParams();
+            // Use the last selected time range or default to 1 hour
+            const lastTimeRange = Object.values(currentTimeRanges)[0] || '1h';
+            queryParams.append('time_range', lastTimeRange);
+
+            fetch('/api/stats?' + queryParams.toString())
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('targets');
+                    const currentTargets = new Set(Object.keys(data));
+                    const existingCards = container.querySelectorAll('.target-card');
+                    const existingTargets = new Set();
+
+                    // Update existing cards and remove old ones
+                    existingCards.forEach(card => {
+                        const hostname = card.querySelector('.target-hostname').textContent;
+                        if (currentTargets.has(hostname)) {
+                            existingTargets.add(hostname);
+                            // Preserve the selected time range when updating
+                            if (currentTimeRanges[hostname]) {
+                                data[hostname].time_range = currentTimeRanges[hostname];
+                            }
+                            const newCard = createTargetCard(hostname, data[hostname], false);
+                            card.replaceWith(newCard);
+                        } else {
+                            card.remove();
+                            delete currentTimeRanges[hostname];
+                        }
+                    });
+
+                    // Add new targets
+                    for (const [hostname, stats] of Object.entries(data)) {
+                        if (!existingTargets.has(hostname)) {
+                            container.appendChild(createTargetCard(hostname, stats, true));
+                        }
+                    }
+                });
+        }
+
+        function addTarget() {
+            const input = document.getElementById('target-input');
+            const hostname = input.value.trim();
+            if (!hostname) return;
+
+            fetch('/api/targets', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ target: hostname }),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        input.value = '';
+                        updateTargets();
+                    }
+                });
+        }
+
+        function deleteTarget(hostname) {
+            fetch(`/api/targets/${hostname}`, {
+                method: 'DELETE',
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        updateTargets();
+                    }
+                });
+        }
+
+        document.getElementById('target-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addTarget();
+            }
+        });
+
+        updateTargets();
+        setInterval(updateTargets, 5000);
+    </script>
+</body>
+</html>
